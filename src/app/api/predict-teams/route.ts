@@ -27,11 +27,11 @@ interface FDMatchRaw {
 
 async function getTeamData(teamId: number) {
   for (const compId of COMPETITION_IDS) {
-    const data = await apiFetch(`competitions/${compId}/matches`, { status: "FINISHED" });
+    const data = await apiFetch(`competitions/${compId}/matches`);
     if (!data?.matches) continue;
 
     const matches: FDMatchRaw[] = data.matches.filter((m: FDMatchRaw) =>
-      m.homeTeam.id === teamId || m.awayTeam.id === teamId
+      (m.homeTeam.id === teamId || m.awayTeam.id === teamId) && m.status === "FINISHED"
     );
 
     if (matches.length >= 5) {

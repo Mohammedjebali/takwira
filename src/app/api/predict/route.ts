@@ -21,11 +21,11 @@ async function apiFetch(endpoint: string, params: Record<string, string | number
 async function getTeamStatsFromCompetitions(teamId: number) {
   // Try each competition to find this team's matches
   for (const compId of COMPETITION_IDS) {
-    const data = await apiFetch(`competitions/${compId}/matches`, { status: "FINISHED" });
+    const data = await apiFetch(`competitions/${compId}/matches`);
     if (!data?.matches) continue;
 
-    const matches = data.matches.filter((m: { homeTeam: { id: number }; awayTeam: { id: number } }) =>
-      m.homeTeam.id === teamId || m.awayTeam.id === teamId
+    const matches = data.matches.filter((m: { homeTeam: { id: number }; awayTeam: { id: number }; status: string }) =>
+      (m.homeTeam.id === teamId || m.awayTeam.id === teamId) && m.status === "FINISHED"
     );
 
     if (matches.length >= 5) {
