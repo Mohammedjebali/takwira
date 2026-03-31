@@ -1,5 +1,6 @@
 import { getFixturesByDate, getTopLeagues } from "@/lib/api-football";
 import FixtureCard from "@/components/FixtureCard";
+import LeagueFilter from "@/components/LeagueFilter";
 import { format } from "date-fns";
 
 export const revalidate = 300; // refresh every 5 min
@@ -69,46 +70,7 @@ export default async function HomePage({
         </p>
       </div>
 
-      {/* League filter — grouped by country */}
-      <div className="mb-6">
-        <div className="flex gap-2 mb-3 flex-wrap">
-          <a
-            href={`?date=${date}`}
-            className={`px-3 py-1.5 rounded-full text-xs transition-colors font-medium ${!leagueFilter ? "bg-blue-600 text-white" : "bg-gray-800 hover:bg-gray-700"}`}
-          >
-            🌍 All
-          </a>
-          {/* Group pills by country group */}
-          {Array.from(new Set(topLeagues.map((l) => (l as { group: string } & typeof l).group))).map((group) => {
-            const groupLeagues = topLeagues.filter((l) => (l as { group: string } & typeof l).group === group);
-            const isGroupActive = groupLeagues.some((l) => l.id === leagueFilter);
-            return (
-              <div key={group} className="relative group">
-                <button className={`px-3 py-1.5 rounded-full text-xs transition-colors ${isGroupActive ? "bg-blue-600 text-white" : "bg-gray-800 hover:bg-gray-700"}`}>
-                  {group}
-                </button>
-                <div className="hidden group-hover:flex absolute top-8 left-0 z-50 flex-col bg-gray-900 border border-gray-700 rounded-xl shadow-xl min-w-[160px] py-1">
-                  {groupLeagues.map((l) => (
-                    <a
-                      key={l.id}
-                      href={`?date=${date}&league=${l.id}`}
-                      className={`flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-gray-800 transition-colors ${leagueFilter === l.id ? "text-blue-400" : "text-gray-300"}`}
-                    >
-                      <img src={l.logo} alt={l.name} className="w-4 h-4" />
-                      {l.name}
-                    </a>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        {leagueFilter && (
-          <a href={`?date=${date}`} className="text-xs text-gray-500 hover:text-gray-300">
-            ✕ Clear filter
-          </a>
-        )}
-      </div>
+      <LeagueFilter leagues={topLeagues as (typeof topLeagues[0] & { group: string })[]} leagueFilter={leagueFilter} date={date} />
 
       {error && (
         <div className="card text-red-400 text-sm mb-4">
