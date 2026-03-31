@@ -91,16 +91,23 @@ export default function FixtureCard({ fixture }: { fixture: Fixture }) {
         </div>
       </div>
 
-      {/* Predict Button */}
-      <div className="mt-3 text-center">
-        <button
-          onClick={fetchPrediction}
-          disabled={loading}
-          className="text-xs px-4 py-1.5 rounded-full bg-blue-600 hover:bg-blue-500 transition-colors disabled:opacity-50 cursor-pointer"
-        >
-          {loading ? "Analyzing..." : open ? "Hide Prediction" : "🔮 Predict"}
-        </button>
-      </div>
+      {/* Predict Button — only for upcoming matches */}
+      {!isLive && !isFinished && (
+        <div className="mt-3 text-center">
+          <button
+            onClick={fetchPrediction}
+            disabled={loading}
+            className="text-xs px-4 py-1.5 rounded-full bg-blue-600 hover:bg-blue-500 transition-colors disabled:opacity-50 cursor-pointer"
+          >
+            {loading ? "Analyzing..." : open ? "Hide Prediction" : "🔮 Predict"}
+          </button>
+        </div>
+      )}
+      {isLive && (
+        <div className="mt-3 text-center text-xs text-gray-600">
+          Match in progress — prediction not available
+        </div>
+      )}
 
       {/* Prediction Panel */}
       {open && prediction && (
