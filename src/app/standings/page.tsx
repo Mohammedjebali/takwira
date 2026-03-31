@@ -19,7 +19,7 @@ export default async function StandingsPage() {
   const leagueMap = Object.fromEntries(leagues.map((l) => [l.id, l]));
 
   const results = await Promise.allSettled(
-    TOP_LEAGUES.map((id) => getStandings(id, SEASON))
+    TOP_LEAGUES.map((id) => getStandings(id))
   );
 
   return (
