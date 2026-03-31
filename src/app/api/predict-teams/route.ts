@@ -61,7 +61,7 @@ async function getTeamData(teamId: number) {
       });
 
       return {
-        stats: { goalsFor: goalsFor / played, goalsAgainst: goalsAgainst / played, played, wins, draws, losses },
+        stats: { goalsFor, goalsAgainst, played, wins, draws, losses }, // totals — predictor divides by played
         form,
         allMatches: data.matches as FDMatchRaw[],
       };
@@ -105,8 +105,8 @@ export async function GET(req: NextRequest) {
       homeForm: homeData?.form || [],
       awayForm: awayData?.form || [],
       h2hCount: h2hMatches.length,
-      homeGoalsAvg: homeStats.goalsFor,
-      awayGoalsAvg: awayStats.goalsFor,
+      homeGoalsAvg: homeStats.played > 0 ? homeStats.goalsFor / homeStats.played : 0,
+      awayGoalsAvg: awayStats.played > 0 ? awayStats.goalsFor / awayStats.played : 0,
       homePlayed: homeStats.played,
       awayPlayed: awayStats.played,
     });

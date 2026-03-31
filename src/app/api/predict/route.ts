@@ -45,8 +45,8 @@ async function getTeamStatsFromCompetitions(teamId: number) {
 
       return {
         stats: {
-          goalsFor: goalsFor / played,
-          goalsAgainst: goalsAgainst / played,
+          goalsFor,       // total goals (predictor divides by played itself)
+          goalsAgainst,
           played, wins, draws, losses,
         },
         compMatches: data.matches,
@@ -91,8 +91,8 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       ...result,
-      homeGoalsAvg: homeStats.goalsFor,
-      awayGoalsAvg: awayStats.goalsFor,
+      homeGoalsAvg: homeStats.played > 0 ? homeStats.goalsFor / homeStats.played : 0,
+      awayGoalsAvg: awayStats.played > 0 ? awayStats.goalsFor / awayStats.played : 0,
       h2hCount: h2hMatches.length,
       homePlayed: homeStats.played,
       awayPlayed: awayStats.played,
