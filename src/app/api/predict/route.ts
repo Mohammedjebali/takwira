@@ -40,14 +40,16 @@ export async function GET(req: NextRequest) {
       homeTeamId: ((m.teams as { home: { id: number } })?.home?.id),
     }));
 
-    const result = predict(
-      parseStats(homeStats),
-      parseStats(awayStats),
-      h2hMatches,
-      homeId
-    );
+    const homeParsed = parseStats(homeStats);
+    const awayParsed = parseStats(awayStats);
+    const result = predict(homeParsed, awayParsed, h2hMatches, homeId);
 
-    return NextResponse.json(result);
+    return NextResponse.json({
+      ...result,
+      homeGoalsAvg: homeParsed.goalsFor,
+      awayGoalsAvg: awayParsed.goalsFor,
+      h2hCount: h2hMatches.length,
+    });
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }
