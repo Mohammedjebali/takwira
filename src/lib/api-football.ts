@@ -34,7 +34,8 @@ export async function getTeamStats(teamId: number, leagueId: number, season: num
 }
 
 export async function getHeadToHead(team1: number, team2: number) {
-  return apiFetch("fixtures/headtohead", { h2h: `${team1}-${team2}`, last: 10 });
+  // Note: free plan doesn't support `last` param — fetch all and slice in code
+  return apiFetch("fixtures/headtohead", { h2h: `${team1}-${team2}` });
 }
 
 export async function getStandings(leagueId: number, season: number) {

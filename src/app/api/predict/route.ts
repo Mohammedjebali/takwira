@@ -21,14 +21,18 @@ export async function GET(req: NextRequest) {
     ]);
 
     // Parse home team stats
-    const parseStats = (stats: Record<string, unknown>) => ({
-      goalsFor: (stats?.goals as { for?: { average?: { total?: number } } })?.for?.average?.total || 1.2,
-      goalsAgainst: (stats?.goals as { against?: { average?: { total?: number } } })?.against?.average?.total || 1.2,
-      played: (stats?.fixtures as { played?: { total?: number } })?.played?.total || 0,
-      wins: (stats?.fixtures as { wins?: { total?: number } })?.wins?.total || 0,
-      draws: (stats?.fixtures as { draws?: { total?: number } })?.draws?.total || 0,
-      losses: (stats?.fixtures as { loses?: { total?: number } })?.loses?.total || 0,
-    });
+    const parseStats = (stats: Record<string, unknown>) => {
+      const goals = stats?.goals as { for?: { average?: { total?: string | number } }; against?: { average?: { total?: string | number } } } | undefined;
+      const fixt = stats?.fixtures as { played?: { total?: number }; wins?: { total?: number }; draws?: { total?: number }; loses?: { total?: number } } | undefined;
+      return {
+        goalsFor: parseFloat(String(goals?.for?.average?.total || "1.2")) || 1.2,
+        goalsAgainst: parseFloat(String(goals?.against?.average?.total || "1.2")) || 1.2,
+        played: fixt?.played?.total || 0,
+        wins: fixt?.wins?.total || 0,
+        draws: fixt?.draws?.total || 0,
+        losses: fixt?.loses?.total || 0,
+      };
+    };
 
     const h2hMatches = (h2hRaw || []).map((m: Record<string, unknown>) => ({
       homeGoals: (m.goals as { home: number })?.home,

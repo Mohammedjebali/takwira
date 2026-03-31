@@ -25,10 +25,11 @@ export async function GET(req: NextRequest) {
     const season = new Date().getFullYear();
 
     // Get last matches for each team to figure out their common league
+    // Free plan doesn't support `last` param — use season instead
     const [homeFixtures, awayFixtures, h2hRaw] = await Promise.all([
-      apiFetch("fixtures", { team: homeId, last: 10 }),
-      apiFetch("fixtures", { team: awayId, last: 10 }),
-      apiFetch("fixtures/headtohead", { h2h: `${homeId}-${awayId}`, last: 10 }),
+      apiFetch("fixtures", { team: homeId, season }),
+      apiFetch("fixtures", { team: awayId, season }),
+      apiFetch("fixtures/headtohead", { h2h: `${homeId}-${awayId}` }),
     ]);
 
     // Find a common league ID from recent fixtures
@@ -43,24 +44,30 @@ export async function GET(req: NextRequest) {
       apiFetch("teams/statistics", { team: awayId, league: leagueId, season }),
     ]);
 
-    const parseStats = (stats: Record<string, unknown>) => ({
-      goalsFor: Number((stats?.goals as { for?: { average?: { total?: number } } })?.for?.average?.total) || 1.2,
-      goalsAgainst: Number((stats?.goals as { against?: { average?: { total?: number } } })?.against?.average?.total) || 1.2,
-      played: Number((stats?.fixtures as { played?: { total?: number } })?.played?.total) || 0,
-      wins: Number((stats?.fixtures as { wins?: { total?: number } })?.wins?.total) || 0,
-      draws: Number((stats?.fixtures as { draws?: { total?: number } })?.draws?.total) || 0,
-      losses: Number((stats?.fixtures as { loses?: { total?: number } })?.loses?.total) || 0,
-    });
+    const parseStats = (stats: Record<string, unknown>) => {
+      const goals = stats?.goals as { for?: { average?: { total?: string | number } }; against?: { average?: { total?: string | number } } } | undefined;
+      const fixt = stats?.fixtures as { played?: { total?: number }; wins?: { total?: number }; draws?: { total?: number }; loses?: { total?: number } } | undefined;
+      return {
+        goalsFor: parseFloat(String(goals?.for?.average?.total || "1.2")) || 1.2,
+        goalsAgainst: parseFloat(String(goals?.against?.average?.total || "1.2")) || 1.2,
+        played: fixt?.played?.total || 0,
+        wins: fixt?.wins?.total || 0,
+        draws: fixt?.draws?.total || 0,
+        losses: fixt?.loses?.total || 0,
+      };
+    };
 
-    const h2hMatches = (h2hRaw || []).map((m: Record<string, unknown>) => ({
+    const h2hMatches = (h2hRaw || []).slice(0, 10).map((m: Record<string, unknown>) => ({
       homeGoals: (m.goals as { home: number })?.home,
       awayGoals: (m.goals as { away: number })?.away,
       homeTeamId: (m.teams as { home: { id: number } })?.home?.id,
     }));
 
-    // Recent form (last 5)
-    const getForm = (fixtures: Array<{ teams: { home: { id: number }; away: { id: number } }; goals: { home: number; away: number } }>, teamId: number) =>
-      (fixtures || []).slice(0, 5).map((f) => {
+    // Recent form (last 5 finished matches)
+    const getForm = (fixtures: Array<{ fixture: { status: { short: string } }; teams: { home: { id: number }; away: { id: number } }; goals: { home: number; away: number } }>, teamId: number) => {
+      const FINISHED = ["FT", "AET", "PEN"];
+      const finished = (fixtures || []).filter((f) => FINISHED.includes(f.fixture.status.short));
+      return finished.slice(-5).map((f) => {
         const isHome = f.teams.home.id === teamId;
         const scored = isHome ? f.goals.home : f.goals.away;
         const conceded = isHome ? f.goals.away : f.goals.home;
@@ -68,6 +75,7 @@ export async function GET(req: NextRequest) {
         if (scored === conceded) return "D";
         return "L";
       });
+    };
 
     const homeForm = getForm(homeFixtures, homeId);
     const awayForm = getForm(awayFixtures, awayId);
