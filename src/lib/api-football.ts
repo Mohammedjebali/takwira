@@ -1,4 +1,9 @@
-const BASE_URL = "https://v3.football.api-sports.io";
+// ============================================================
+// football-data.org API v4
+// Free tier: 10 req/min, covers 13 major competitions
+// ============================================================
+
+const BASE_URL = "https://api.football-data.org/v4";
 const API_KEY = process.env.API_FOOTBALL_KEY!;
 
 async function apiFetch(endpoint: string, params: Record<string, string | number> = {}) {
@@ -6,92 +11,102 @@ async function apiFetch(endpoint: string, params: Record<string, string | number
   Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, String(v)));
 
   const res = await fetch(url.toString(), {
-    headers: { "x-apisports-key": API_KEY },
-    next: { revalidate: 300 }, // cache 5 min
+    headers: { "X-Auth-Token": API_KEY },
+    next: { revalidate: 300 },
   });
 
-  if (!res.ok) throw new Error(`API error: ${res.status}`);
-  const data = await res.json();
-  return data.response;
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || `API error ${res.status}`);
+  }
+  return res.json();
 }
 
-export async function getFixturesByDate(date: string) {
-  return apiFetch("fixtures", { date, timezone: "Europe/Paris" });
+// football-data.org competition IDs
+export const COMPETITIONS = {
+  UCL:         2001,
+  PL:          2021,
+  BL1:         2002, // Bundesliga
+  SA:          2019, // Serie A
+  PD:          2014, // La Liga (Primera Division)
+  FL1:         2015, // Ligue 1
+  DED:         2003, // Eredivisie
+  PPL:         2017, // Primeira Liga (Portugal)
+  BSA:         2013, // Brasileirao Serie A
+  ELC:         2016, // Championship
+  CLI:         2152, // Copa Libertadores
+};
+
+export async function getMatchesByDate(date: string) {
+  const data = await apiFetch(`matches`, { date });
+  return data.matches || [];
 }
 
-export async function getFixtureById(id: number) {
-  const res = await apiFetch("fixtures", { id });
-  return res[0];
+export async function getMatchesForDateRange(dateFrom: string, dateTo: string) {
+  const data = await apiFetch(`matches`, { dateFrom, dateTo });
+  return data.matches || [];
 }
 
-export async function getTeamStats(teamId: number, leagueId: number, season: number) {
-  const res = await apiFetch("teams/statistics", {
-    team: teamId,
-    league: leagueId,
-    season,
-  });
-  return res;
+export async function getCompetitionMatches(competitionId: number, matchday?: number) {
+  const params: Record<string, string | number> = {};
+  if (matchday) params.matchday = matchday;
+  const data = await apiFetch(`competitions/${competitionId}/matches`, params);
+  return data.matches || [];
 }
 
-export async function getHeadToHead(team1: number, team2: number) {
-  // Note: free plan doesn't support `last` param — fetch all and slice in code
-  return apiFetch("fixtures/headtohead", { h2h: `${team1}-${team2}` });
+export async function getTeam(teamId: number) {
+  return apiFetch(`teams/${teamId}`);
 }
 
-export async function getStandings(leagueId: number, season: number) {
-  return apiFetch("standings", { league: leagueId, season });
+export async function searchTeams(query: string) {
+  // football-data.org doesn't have a search endpoint — we match from our list
+  // or fetch by competition and filter
+  const data = await apiFetch(`teams?name=${encodeURIComponent(query)}`);
+  return data.teams || [];
 }
 
-export interface LeagueGroup {
+export async function getHeadToHead(matchId: number) {
+  const data = await apiFetch(`matches/${matchId}/head2head`, { limit: 10 });
+  return data.matches || [];
+}
+
+export async function getH2HByTeams(team1Id: number, team2Id: number) {
+  // No direct H2H by team IDs in v4 free tier — returns empty for now
+  return [];
+}
+
+export async function getStandings(competitionId: number) {
+  const data = await apiFetch(`competitions/${competitionId}/standings`);
+  return data.standings || [];
+}
+
+export async function getTeamMatches(teamId: number, season?: number) {
+  const params: Record<string, string | number> = { limit: 20 };
+  if (season) params.season = season;
+  const data = await apiFetch(`teams/${teamId}/matches`, params);
+  return data.matches || [];
+}
+
+export interface LeagueInfo {
+  id: number;
+  name: string;
+  logo: string;
   group: string;
-  leagues: { id: number; name: string; logo: string }[];
+  apiId: number;
 }
 
-export async function getTopLeagues() {
+export async function getTopLeagues(): Promise<LeagueInfo[]> {
   return [
-    // Europe - Cups
-    { id: 2,   name: "Champions League",  logo: "https://media.api-sports.io/football/leagues/2.png",   group: "🏆 Europe" },
-    { id: 3,   name: "Europa League",     logo: "https://media.api-sports.io/football/leagues/3.png",   group: "🏆 Europe" },
-    { id: 848, name: "Conference League", logo: "https://media.api-sports.io/football/leagues/848.png", group: "🏆 Europe" },
-    // England
-    { id: 39,  name: "Premier League",    logo: "https://media.api-sports.io/football/leagues/39.png",  group: "🏴󠁧󠁢󠁥󠁮󠁧󠁿 England" },
-    { id: 40,  name: "Championship",      logo: "https://media.api-sports.io/football/leagues/40.png",  group: "🏴󠁧󠁢󠁥󠁮󠁧󠁿 England" },
-    { id: 41,  name: "League One",        logo: "https://media.api-sports.io/football/leagues/41.png",  group: "🏴󠁧󠁢󠁥󠁮󠁧󠁿 England" },
-    { id: 42,  name: "League Two",        logo: "https://media.api-sports.io/football/leagues/42.png",  group: "🏴󠁧󠁢󠁥󠁮󠁧󠁿 England" },
-    // Spain
-    { id: 140, name: "La Liga",           logo: "https://media.api-sports.io/football/leagues/140.png", group: "🇪🇸 Spain" },
-    { id: 141, name: "La Liga 2",         logo: "https://media.api-sports.io/football/leagues/141.png", group: "🇪🇸 Spain" },
-    // Germany
-    { id: 78,  name: "Bundesliga",        logo: "https://media.api-sports.io/football/leagues/78.png",  group: "🇩🇪 Germany" },
-    { id: 79,  name: "2. Bundesliga",     logo: "https://media.api-sports.io/football/leagues/79.png",  group: "🇩🇪 Germany" },
-    { id: 80,  name: "3. Liga",           logo: "https://media.api-sports.io/football/leagues/80.png",  group: "🇩🇪 Germany" },
-    // Italy
-    { id: 135, name: "Serie A",           logo: "https://media.api-sports.io/football/leagues/135.png", group: "🇮🇹 Italy" },
-    { id: 136, name: "Serie B",           logo: "https://media.api-sports.io/football/leagues/136.png", group: "🇮🇹 Italy" },
-    { id: 137, name: "Serie C",           logo: "https://media.api-sports.io/football/leagues/137.png", group: "🇮🇹 Italy" },
-    // France
-    { id: 61,  name: "Ligue 1",           logo: "https://media.api-sports.io/football/leagues/61.png",  group: "🇫🇷 France" },
-    { id: 62,  name: "Ligue 2",           logo: "https://media.api-sports.io/football/leagues/62.png",  group: "🇫🇷 France" },
-    // Turkey
-    { id: 203, name: "Süper Lig",         logo: "https://media.api-sports.io/football/leagues/203.png", group: "🇹🇷 Turkey" },
-    { id: 204, name: "1. Lig",            logo: "https://media.api-sports.io/football/leagues/204.png", group: "🇹🇷 Turkey" },
-    // Netherlands
-    { id: 88,  name: "Eredivisie",        logo: "https://media.api-sports.io/football/leagues/88.png",  group: "🇳🇱 Netherlands" },
-    { id: 89,  name: "Eerste Divisie",    logo: "https://media.api-sports.io/football/leagues/89.png",  group: "🇳🇱 Netherlands" },
-    // Belgium
-    { id: 144, name: "First Division A",  logo: "https://media.api-sports.io/football/leagues/144.png", group: "🇧🇪 Belgium" },
-    { id: 145, name: "First Division B",  logo: "https://media.api-sports.io/football/leagues/145.png", group: "🇧🇪 Belgium" },
-    // Saudi Arabia
-    { id: 307, name: "Pro League",        logo: "https://media.api-sports.io/football/leagues/307.png", group: "🇸🇦 Saudi Arabia" },
-    // Brazil
-    { id: 71,  name: "Série A",           logo: "https://media.api-sports.io/football/leagues/71.png",  group: "🇧🇷 Brazil" },
-    { id: 72,  name: "Série B",           logo: "https://media.api-sports.io/football/leagues/72.png",  group: "🇧🇷 Brazil" },
-    { id: 75,  name: "Série C",           logo: "https://media.api-sports.io/football/leagues/75.png",  group: "🇧🇷 Brazil" },
-    // Argentina
-    { id: 128, name: "Liga Profesional",  logo: "https://media.api-sports.io/football/leagues/128.png", group: "🇦🇷 Argentina" },
-    { id: 131, name: "Primera Nacional",  logo: "https://media.api-sports.io/football/leagues/131.png", group: "🇦🇷 Argentina" },
-    // Tunisia
-    { id: 207, name: "Ligue Pro",         logo: "https://media.api-sports.io/football/leagues/207.png", group: "🇹🇳 Tunisia" },
-    { id: 208, name: "Ligue 2",           logo: "https://media.api-sports.io/football/leagues/208.png", group: "🇹🇳 Tunisia" },
+    { id: 2001, apiId: 2001, name: "Champions League",  logo: "https://crests.football-data.org/CL.png",  group: "🏆 Europe" },
+    { id: 2021, apiId: 2021, name: "Premier League",    logo: "https://crests.football-data.org/PL.png",  group: "🏴󠁧󠁢󠁥󠁮󠁧󠁿 England" },
+    { id: 2016, apiId: 2016, name: "Championship",      logo: "https://crests.football-data.org/ELC.png", group: "🏴󠁧󠁢󠁥󠁮󠁧󠁿 England" },
+    { id: 2014, apiId: 2014, name: "La Liga",           logo: "https://crests.football-data.org/PD.png",  group: "🇪🇸 Spain" },
+    { id: 2002, apiId: 2002, name: "Bundesliga",        logo: "https://crests.football-data.org/BL1.png", group: "🇩🇪 Germany" },
+    { id: 2019, apiId: 2019, name: "Serie A",           logo: "https://crests.football-data.org/SA.png",  group: "🇮🇹 Italy" },
+    { id: 2015, apiId: 2015, name: "Ligue 1",           logo: "https://crests.football-data.org/FL1.png", group: "🇫🇷 France" },
+    { id: 2003, apiId: 2003, name: "Eredivisie",        logo: "https://crests.football-data.org/DED.png", group: "🇳🇱 Netherlands" },
+    { id: 2017, apiId: 2017, name: "Primeira Liga",     logo: "https://crests.football-data.org/PPL.png", group: "🇵🇹 Portugal" },
+    { id: 2013, apiId: 2013, name: "Brasileirao Série A", logo: "https://crests.football-data.org/BSA.png", group: "🇧🇷 Brazil" },
+    { id: 2152, apiId: 2152, name: "Copa Libertadores", logo: "https://crests.football-data.org/CLI.png", group: "🌎 South America" },
   ];
 }

@@ -1,23 +1,26 @@
-import { getFixturesByDate, getTopLeagues } from "@/lib/api-football";
+import { getMatchesByDate, getTopLeagues } from "@/lib/api-football";
 import FixtureCard from "@/components/FixtureCard";
 import LeagueFilter from "@/components/LeagueFilter";
 import { format } from "date-fns";
 
-export const revalidate = 300; // refresh every 5 min
+export const revalidate = 300;
 
-interface Fixture {
-  fixture: { id: number; date: string; status: { short: string; elapsed: number | null } };
-  league: { id: number; name: string; logo: string; season: number };
-  teams: {
-    home: { id: number; name: string; logo: string };
-    away: { id: number; name: string; logo: string };
+// football-data.org match format
+interface FDMatch {
+  id: number;
+  utcDate: string;
+  status: string; // SCHEDULED, LIVE, IN_PLAY, PAUSED, FINISHED, etc.
+  minute?: number;
+  competition: { id: number; name: string; emblem?: string };
+  homeTeam: { id: number; name: string; crest?: string };
+  awayTeam: { id: number; name: string; crest?: string };
+  score: {
+    fullTime: { home: number | null; away: number | null };
+    halfTime: { home: number | null; away: number | null };
   };
-  goals: { home: number | null; away: number | null };
-  score: { halftime: { home: number | null; away: number | null } };
 }
 
-// No longer used for filtering — just kept for reference
-// const TOP_LEAGUE_IDS = [2, 3, 39, 140, 135, 78, 61, 207];
+const FINISHED_STATUSES = ["FINISHED", "AWARDED", "POSTPONED", "CANCELLED", "SUSPENDED"];
 
 export default async function HomePage({
   searchParams,
@@ -29,70 +32,64 @@ export default async function HomePage({
   const leagueFilter = sp.league ? Number(sp.league) : null;
   const topLeagues = await getTopLeagues();
 
-  let fixtures: Fixture[] = [];
+  let matches: FDMatch[] = [];
   let error: string | null = null;
 
   try {
-    const all = await getFixturesByDate(date);
-    const FINISHED = ["FT", "AET", "PEN", "AWD", "WO", "CANC", "ABD", "INT", "PST"];
-    // Show only upcoming + live (not finished), or filter by selected league
-    fixtures = (all || []).filter((f: Fixture) => {
-      const notFinished = !FINISHED.includes(f.fixture.status.short);
-      const leagueMatch = leagueFilter ? f.league.id === leagueFilter : true;
+    const all = await getMatchesByDate(date);
+    matches = (all || []).filter((m: FDMatch) => {
+      const notFinished = !FINISHED_STATUSES.includes(m.status);
+      const leagueMatch = leagueFilter ? m.competition.id === leagueFilter : true;
       return notFinished && leagueMatch;
     });
     // Sort: live first, then by time
-    fixtures.sort((a: Fixture, b: Fixture) => {
-      const aLive = ["1H","2H","HT"].includes(a.fixture.status.short) ? 0 : 1;
-      const bLive = ["1H","2H","HT"].includes(b.fixture.status.short) ? 0 : 1;
+    matches.sort((a: FDMatch, b: FDMatch) => {
+      const aLive = ["IN_PLAY", "PAUSED", "LIVE"].includes(a.status) ? 0 : 1;
+      const bLive = ["IN_PLAY", "PAUSED", "LIVE"].includes(b.status) ? 0 : 1;
       if (aLive !== bLive) return aLive - bLive;
-      return new Date(a.fixture.date).getTime() - new Date(b.fixture.date).getTime();
+      return new Date(a.utcDate).getTime() - new Date(b.utcDate).getTime();
     });
   } catch (e) {
     error = String(e);
   }
 
-  // Group by league
-  const byLeague = fixtures.reduce((acc: Record<number, { league: Fixture["league"]; fixtures: Fixture[] }>, f) => {
-    const id = f.league.id;
-    if (!acc[id]) acc[id] = { league: f.league, fixtures: [] };
-    acc[id].fixtures.push(f);
+  // Group by competition
+  const byLeague = matches.reduce((acc: Record<number, { comp: FDMatch["competition"]; matches: FDMatch[] }>, m) => {
+    const id = m.competition.id;
+    if (!acc[id]) acc[id] = { comp: m.competition, matches: [] };
+    acc[id].matches.push(m);
     return acc;
   }, {});
 
   return (
     <div>
-      {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold mb-1">Today&apos;s Matches</h1>
         <p className="text-gray-500 text-sm">
-          {format(new Date(date), "EEEE, MMMM d, yyyy")} · {fixtures.length} upcoming/live matches
+          {format(new Date(date + "T12:00:00"), "EEEE, MMMM d, yyyy")} · {matches.length} upcoming/live matches
         </p>
       </div>
 
       <LeagueFilter leagues={topLeagues as (typeof topLeagues[0] & { group: string })[]} leagueFilter={leagueFilter} date={date} />
 
       {error && (
-        <div className="card text-red-400 text-sm mb-4">
-          Failed to load fixtures: {error}
-        </div>
+        <div className="card text-red-400 text-sm mb-4">Failed to load matches: {error}</div>
       )}
 
-      {fixtures.length === 0 && !error && (
+      {matches.length === 0 && !error && (
         <div className="card text-center text-gray-500 py-12">
-          No matches today for {leagueFilter ? "this league" : "any league"} 😴
+          No upcoming matches today {leagueFilter ? "for this league" : ""} 😴
         </div>
       )}
 
-      {/* Fixtures grouped by league */}
-      {Object.values(byLeague).map(({ league, fixtures: lf }) => (
-        <div key={league.id} className="mb-8">
+      {Object.values(byLeague).map(({ comp, matches: lm }) => (
+        <div key={comp.id} className="mb-8">
           <div className="flex items-center gap-2 mb-3">
-            <img src={league.logo} alt={league.name} className="w-5 h-5" />
-            <h2 className="font-semibold text-sm text-gray-300">{league.name}</h2>
+            {comp.emblem && <img src={comp.emblem} alt={comp.name} className="w-5 h-5" />}
+            <h2 className="font-semibold text-sm text-gray-300">{comp.name}</h2>
           </div>
-          {lf.map((f) => (
-            <FixtureCard key={f.fixture.id} fixture={f} />
+          {lm.map((m) => (
+            <FixtureCard key={m.id} match={m} />
           ))}
         </div>
       ))}

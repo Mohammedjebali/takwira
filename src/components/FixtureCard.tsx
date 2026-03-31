@@ -2,15 +2,18 @@
 
 import { useState } from "react";
 
-interface Fixture {
-  fixture: { id: number; date: string; status: { short: string; elapsed: number | null } };
-  league: { id: number; name: string; logo: string; season: number };
-  teams: {
-    home: { id: number; name: string; logo: string };
-    away: { id: number; name: string; logo: string };
+interface FDMatch {
+  id: number;
+  utcDate: string;
+  status: string;
+  minute?: number;
+  competition: { id: number; name: string; emblem?: string };
+  homeTeam: { id: number; name: string; crest?: string };
+  awayTeam: { id: number; name: string; crest?: string };
+  score: {
+    fullTime: { home: number | null; away: number | null };
+    halfTime: { home: number | null; away: number | null };
   };
-  goals: { home: number | null; away: number | null };
-  score: { halftime: { home: number | null; away: number | null } };
 }
 
 interface Prediction {
@@ -25,56 +28,52 @@ interface Prediction {
   h2hCount?: number;
 }
 
-export default function FixtureCard({ fixture }: { fixture: Fixture }) {
+const LIVE_STATUSES = ["IN_PLAY", "PAUSED", "LIVE"];
+const FINISHED_STATUSES = ["FINISHED", "AWARDED"];
+
+export default function FixtureCard({ match }: { match: FDMatch }) {
   const [prediction, setPrediction] = useState<Prediction | null>(null);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
 
-  const { teams, goals, league } = fixture;
-  const status = fixture.fixture.status.short;
-  const isLive = status === "1H" || status === "2H" || status === "HT";
-  const isFinished = status === "FT" || status === "AET" || status === "PEN";
+  const { homeTeam, awayTeam, score } = match;
+  const isLive = LIVE_STATUSES.includes(match.status);
+  const isFinished = FINISHED_STATUSES.includes(match.status);
 
   async function fetchPrediction() {
     if (prediction) { setOpen(!open); return; }
     setLoading(true);
     try {
-      const res = await fetch(
-        `/api/predict?homeId=${teams.home.id}&awayId=${teams.away.id}&leagueId=${league.id}&season=${league.season}`
-      );
+      const res = await fetch(`/api/predict?homeId=${homeTeam.id}&awayId=${awayTeam.id}`);
       const data = await res.json();
+      if (data.error) throw new Error(data.error);
       setPrediction(data);
       setOpen(true);
-    } catch {
-      console.error("Prediction failed");
+    } catch (e) {
+      console.error("Prediction failed", e);
     } finally {
       setLoading(false);
     }
   }
 
-  const fixtureDate = new Date(fixture.fixture.date);
-  const time = fixtureDate.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
-  const dateStr = fixtureDate.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+  const fixtureDate = new Date(match.utcDate);
+  const time = fixtureDate.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" });
+  const dateStr = fixtureDate.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "Europe/Paris" });
 
   const outcomes = prediction ? [
-    { label: teams.home.name, prob: prediction.homeWin, color: "bg-blue-500" },
+    { label: homeTeam.name, prob: prediction.homeWin, color: "bg-blue-500" },
     { label: "Draw", prob: prediction.draw, color: "bg-yellow-500" },
-    { label: teams.away.name, prob: prediction.awayWin, color: "bg-red-500" },
+    { label: awayTeam.name, prob: prediction.awayWin, color: "bg-red-500" },
   ] : [];
   const winner = prediction ? outcomes.reduce((a, b) => (a.prob > b.prob ? a : b)) : null;
 
   return (
     <div className="card mb-3">
-      {/* League + Date */}
+      {/* Date + Status */}
       <div className="flex items-center gap-2 mb-3 text-xs text-gray-500">
-        <img src={league.logo} alt={league.name} className="w-4 h-4" />
-        <span>{league.name}</span>
-        <span className="text-gray-700">·</span>
         <span>{dateStr}</span>
         {isLive && (
-          <span className="ml-auto text-green-400 font-semibold animate-pulse">
-            LIVE {fixture.fixture.status.elapsed}&apos;
-          </span>
+          <span className="ml-auto text-green-400 font-semibold animate-pulse">LIVE</span>
         )}
         {!isLive && !isFinished && <span className="ml-auto text-gray-400 font-medium">{time}</span>}
         {isFinished && <span className="ml-auto text-gray-500">FT</span>}
@@ -83,25 +82,25 @@ export default function FixtureCard({ fixture }: { fixture: Fixture }) {
       {/* Teams + Score */}
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3 flex-1">
-          <img src={teams.home.logo} alt={teams.home.name} className="w-8 h-8" />
-          <span className="font-semibold text-sm">{teams.home.name}</span>
+          {homeTeam.crest && <img src={homeTeam.crest} alt={homeTeam.name} className="w-8 h-8 object-contain" />}
+          <span className="font-semibold text-sm">{homeTeam.name}</span>
         </div>
 
         <div className="text-center min-w-[60px]">
-          {(goals.home !== null && goals.away !== null) ? (
-            <span className="text-xl font-bold">{goals.home} - {goals.away}</span>
+          {(score.fullTime.home !== null && score.fullTime.away !== null) ? (
+            <span className="text-xl font-bold">{score.fullTime.home} - {score.fullTime.away}</span>
           ) : (
             <span className="text-gray-500 text-sm">vs</span>
           )}
         </div>
 
         <div className="flex items-center gap-3 flex-1 justify-end">
-          <span className="font-semibold text-sm text-right">{teams.away.name}</span>
-          <img src={teams.away.logo} alt={teams.away.name} className="w-8 h-8" />
+          <span className="font-semibold text-sm text-right">{awayTeam.name}</span>
+          {awayTeam.crest && <img src={awayTeam.crest} alt={awayTeam.name} className="w-8 h-8 object-contain" />}
         </div>
       </div>
 
-      {/* Predict Button — available for upcoming AND live */}
+      {/* Predict Button */}
       {!isFinished && (
         <div className="mt-3 text-center">
           <button
@@ -120,8 +119,6 @@ export default function FixtureCard({ fixture }: { fixture: Fixture }) {
       {/* Prediction Panel */}
       {open && prediction && (
         <div className="mt-4 pt-4 border-t border-gray-800 space-y-4">
-
-          {/* Winner callout */}
           {winner && (
             <div className="text-center bg-gray-900 rounded-xl py-3">
               <div className="text-xs text-gray-500 mb-0.5">Most likely outcome</div>
@@ -130,7 +127,6 @@ export default function FixtureCard({ fixture }: { fixture: Fixture }) {
             </div>
           )}
 
-          {/* Confidence */}
           <div className="flex items-center justify-between">
             <span className="text-xs text-gray-500">Confidence</span>
             <span className={`text-xs px-2 py-0.5 rounded-full font-medium badge-${prediction.confidence}`}>
@@ -138,7 +134,6 @@ export default function FixtureCard({ fixture }: { fixture: Fixture }) {
             </span>
           </div>
 
-          {/* Win/Draw/Lose bars */}
           <div className="space-y-2">
             {outcomes.map(({ label, prob, color }) => (
               <div key={label} className="flex items-center gap-2">
@@ -151,7 +146,6 @@ export default function FixtureCard({ fixture }: { fixture: Fixture }) {
             ))}
           </div>
 
-          {/* Predicted Score */}
           <div className="text-center">
             <span className="text-xs text-gray-500">Predicted score: </span>
             <span className="text-white font-bold">
@@ -159,7 +153,7 @@ export default function FixtureCard({ fixture }: { fixture: Fixture }) {
             </span>
           </div>
 
-          {/* Based on — data sources */}
+          {/* Based on */}
           <div className="bg-gray-900 rounded-xl p-3 space-y-1.5">
             <div className="text-xs text-gray-500 font-medium mb-2">📊 Based on</div>
             <div className="flex justify-between text-xs">
@@ -168,14 +162,14 @@ export default function FixtureCard({ fixture }: { fixture: Fixture }) {
             </div>
             {prediction.homeGoalsAvg !== undefined && (
               <div className="flex justify-between text-xs">
-                <span className="text-gray-500">{teams.home.name} avg goals/game</span>
-                <span className="text-gray-300">{prediction.homeGoalsAvg?.toFixed(2)}</span>
+                <span className="text-gray-500">{homeTeam.name} avg goals/game</span>
+                <span className="text-gray-300">{prediction.homeGoalsAvg.toFixed(2)}</span>
               </div>
             )}
             {prediction.awayGoalsAvg !== undefined && (
               <div className="flex justify-between text-xs">
-                <span className="text-gray-500">{teams.away.name} avg goals/game</span>
-                <span className="text-gray-300">{prediction.awayGoalsAvg?.toFixed(2)}</span>
+                <span className="text-gray-500">{awayTeam.name} avg goals/game</span>
+                <span className="text-gray-300">{prediction.awayGoalsAvg.toFixed(2)}</span>
               </div>
             )}
             <div className="flex justify-between text-xs">
@@ -183,16 +177,11 @@ export default function FixtureCard({ fixture }: { fixture: Fixture }) {
               <span className="text-gray-300">{prediction.h2hCount ?? "—"}</span>
             </div>
             <div className="flex justify-between text-xs">
-              <span className="text-gray-500">Home advantage factor</span>
+              <span className="text-gray-500">Home advantage</span>
               <span className="text-gray-300">1.2×</span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span className="text-gray-500">League avg goals/game</span>
-              <span className="text-gray-300">2.6</span>
             </div>
           </div>
 
-          {/* Insights */}
           {prediction.insights.length > 0 && (
             <div className="flex flex-wrap gap-1">
               {prediction.insights.map((insight) => (
