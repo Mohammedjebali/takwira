@@ -1,7 +1,11 @@
 import { getMatchesByDate, getTopLeagues } from "@/lib/api-football";
 import FixtureCard from "@/components/FixtureCard";
 import LeagueFilter from "@/components/LeagueFilter";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
+
+function getParisDate(): string {
+  return new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Paris" }).format(new Date());
+}
 
 export const revalidate = 300;
 
@@ -28,7 +32,7 @@ export default async function HomePage({
   searchParams: Promise<{ date?: string; league?: string }>;
 }) {
   const sp = await searchParams;
-  const date = sp.date || format(new Date(), "yyyy-MM-dd");
+  const date = sp.date || getParisDate();
   const leagueFilter = sp.league ? Number(sp.league) : null;
   const topLeagues = await getTopLeagues();
 
@@ -66,7 +70,7 @@ export default async function HomePage({
       <div className="mb-6">
         <h1 className="text-2xl font-bold mb-1">Today&apos;s Matches</h1>
         <p className="text-gray-500 text-sm">
-          {format(new Date(date + "T12:00:00"), "EEEE, MMMM d, yyyy")} · {matches.length} upcoming/live matches
+          {format(parseISO(date), "EEEE, MMMM d, yyyy")} · {matches.length} upcoming/live matches
         </p>
       </div>
 
