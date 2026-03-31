@@ -20,10 +20,11 @@ const TOP_LEAGUE_IDS = [2, 3, 39, 140, 135, 78, 61, 207];
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ date?: string }>;
+  searchParams: Promise<{ date?: string; league?: string }>;
 }) {
   const sp = await searchParams;
   const date = sp.date || format(new Date(), "yyyy-MM-dd");
+  const leagueFilter = sp.league ? Number(sp.league) : null;
   const topLeagues = await getTopLeagues();
 
   let fixtures: Fixture[] = [];
@@ -31,9 +32,9 @@ export default async function HomePage({
 
   try {
     const all = await getFixturesByDate(date);
-    // Filter to top leagues only
+    // Show all fixtures, or filter by selected league
     fixtures = (all || []).filter((f: Fixture) =>
-      TOP_LEAGUE_IDS.includes(f.league.id)
+      leagueFilter ? f.league.id === leagueFilter : true
     );
     // Sort: live first, then by time
     fixtures.sort((a: Fixture, b: Fixture) => {
@@ -61,16 +62,23 @@ export default async function HomePage({
         <h1 className="text-2xl font-bold mb-1">Today&apos;s Matches</h1>
         <p className="text-gray-500 text-sm">
           {format(new Date(date), "EEEE, MMMM d, yyyy")} · {fixtures.length} matches
+          {leagueFilter ? ` · filtered` : ` across all leagues`}
         </p>
       </div>
 
       {/* League filter pills */}
       <div className="flex gap-2 mb-6 flex-wrap">
+        <a
+          href={`?date=${date}`}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs transition-colors ${!leagueFilter ? "bg-blue-600 text-white" : "bg-gray-800 hover:bg-gray-700"}`}
+        >
+          All leagues
+        </a>
         {topLeagues.map((l) => (
           <a
             key={l.id}
-            href={`?date=${date}`}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs bg-gray-800 hover:bg-gray-700 transition-colors"
+            href={`?date=${date}&league=${l.id}`}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs transition-colors ${leagueFilter === l.id ? "bg-blue-600 text-white" : "bg-gray-800 hover:bg-gray-700"}`}
           >
             <img src={l.logo} alt={l.name} className="w-4 h-4" />
             <span className="hidden sm:inline">{l.name}</span>
@@ -86,7 +94,7 @@ export default async function HomePage({
 
       {fixtures.length === 0 && !error && (
         <div className="card text-center text-gray-500 py-12">
-          No matches today for the selected leagues 😴
+          No matches today for {leagueFilter ? "this league" : "any league"} 😴
         </div>
       )}
 
