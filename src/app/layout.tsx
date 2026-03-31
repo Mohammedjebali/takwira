@@ -18,6 +18,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </div>
           <nav className="flex gap-4 text-sm text-gray-400">
             <a href="/" className="hover:text-white transition-colors">Today</a>
+            <a href="/predict" className="hover:text-white transition-colors text-blue-400">🔮 Predict</a>
             <a href="/standings" className="hover:text-white transition-colors">Standings</a>
           </nav>
         </header>
