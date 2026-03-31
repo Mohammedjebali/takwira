@@ -32,10 +32,13 @@ export default async function HomePage({
 
   try {
     const all = await getFixturesByDate(date);
-    // Show all fixtures, or filter by selected league
-    fixtures = (all || []).filter((f: Fixture) =>
-      leagueFilter ? f.league.id === leagueFilter : true
-    );
+    const FINISHED = ["FT", "AET", "PEN", "AWD", "WO", "CANC", "ABD", "INT", "PST"];
+    // Show only upcoming + live (not finished), or filter by selected league
+    fixtures = (all || []).filter((f: Fixture) => {
+      const notFinished = !FINISHED.includes(f.fixture.status.short);
+      const leagueMatch = leagueFilter ? f.league.id === leagueFilter : true;
+      return notFinished && leagueMatch;
+    });
     // Sort: live first, then by time
     fixtures.sort((a: Fixture, b: Fixture) => {
       const aLive = ["1H","2H","HT"].includes(a.fixture.status.short) ? 0 : 1;
@@ -61,8 +64,7 @@ export default async function HomePage({
       <div className="mb-6">
         <h1 className="text-2xl font-bold mb-1">Today&apos;s Matches</h1>
         <p className="text-gray-500 text-sm">
-          {format(new Date(date), "EEEE, MMMM d, yyyy")} · {fixtures.length} matches
-          {leagueFilter ? ` · filtered` : ` across all leagues`}
+          {format(new Date(date), "EEEE, MMMM d, yyyy")} · {fixtures.length} upcoming/live matches
         </p>
       </div>
 
