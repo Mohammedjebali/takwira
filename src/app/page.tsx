@@ -15,7 +15,8 @@ interface Fixture {
   score: { halftime: { home: number | null; away: number | null } };
 }
 
-const TOP_LEAGUE_IDS = [2, 3, 39, 140, 135, 78, 61, 207];
+// No longer used for filtering — just kept for reference
+// const TOP_LEAGUE_IDS = [2, 3, 39, 140, 135, 78, 61, 207];
 
 export default async function HomePage({
   searchParams,
@@ -68,24 +69,45 @@ export default async function HomePage({
         </p>
       </div>
 
-      {/* League filter pills */}
-      <div className="flex gap-2 mb-6 flex-wrap">
-        <a
-          href={`?date=${date}`}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs transition-colors ${!leagueFilter ? "bg-blue-600 text-white" : "bg-gray-800 hover:bg-gray-700"}`}
-        >
-          All leagues
-        </a>
-        {topLeagues.map((l) => (
+      {/* League filter — grouped by country */}
+      <div className="mb-6">
+        <div className="flex gap-2 mb-3 flex-wrap">
           <a
-            key={l.id}
-            href={`?date=${date}&league=${l.id}`}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs transition-colors ${leagueFilter === l.id ? "bg-blue-600 text-white" : "bg-gray-800 hover:bg-gray-700"}`}
+            href={`?date=${date}`}
+            className={`px-3 py-1.5 rounded-full text-xs transition-colors font-medium ${!leagueFilter ? "bg-blue-600 text-white" : "bg-gray-800 hover:bg-gray-700"}`}
           >
-            <img src={l.logo} alt={l.name} className="w-4 h-4" />
-            <span className="hidden sm:inline">{l.name}</span>
+            🌍 All
           </a>
-        ))}
+          {/* Group pills by country group */}
+          {Array.from(new Set(topLeagues.map((l) => (l as { group: string } & typeof l).group))).map((group) => {
+            const groupLeagues = topLeagues.filter((l) => (l as { group: string } & typeof l).group === group);
+            const isGroupActive = groupLeagues.some((l) => l.id === leagueFilter);
+            return (
+              <div key={group} className="relative group">
+                <button className={`px-3 py-1.5 rounded-full text-xs transition-colors ${isGroupActive ? "bg-blue-600 text-white" : "bg-gray-800 hover:bg-gray-700"}`}>
+                  {group}
+                </button>
+                <div className="hidden group-hover:flex absolute top-8 left-0 z-50 flex-col bg-gray-900 border border-gray-700 rounded-xl shadow-xl min-w-[160px] py-1">
+                  {groupLeagues.map((l) => (
+                    <a
+                      key={l.id}
+                      href={`?date=${date}&league=${l.id}`}
+                      className={`flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-gray-800 transition-colors ${leagueFilter === l.id ? "text-blue-400" : "text-gray-300"}`}
+                    >
+                      <img src={l.logo} alt={l.name} className="w-4 h-4" />
+                      {l.name}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        {leagueFilter && (
+          <a href={`?date=${date}`} className="text-xs text-gray-500 hover:text-gray-300">
+            ✕ Clear filter
+          </a>
+        )}
       </div>
 
       {error && (
