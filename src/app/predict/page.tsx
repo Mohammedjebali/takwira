@@ -165,7 +165,7 @@ export default function PredictPage() {
       </div>
 
       <div className="card mb-4">
-        <div className="grid grid-cols-2 gap-4 mb-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
           <TeamSearch label="Home Team" selected={homeTeam} onSelect={setHomeTeam} />
           <TeamSearch label="Away Team" selected={awayTeam} onSelect={setAwayTeam} />
         </div>
@@ -186,15 +186,15 @@ export default function PredictPage() {
       {prediction && homeTeam && awayTeam && (
         <div className="card space-y-5">
           {/* Teams header */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <img src={homeTeam.logo} alt={homeTeam.name} className="w-10 h-10" />
-              <span className="font-bold">{homeTeam.name}</span>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-col items-center gap-1 flex-1 min-w-0">
+              <img src={homeTeam.logo} alt={homeTeam.name} className="w-10 h-10 object-contain" />
+              <span className="font-bold text-xs text-center truncate w-full">{homeTeam.name}</span>
             </div>
-            <span className="text-gray-500 font-bold text-sm">VS</span>
-            <div className="flex items-center gap-2 flex-row-reverse">
-              <img src={awayTeam.logo} alt={awayTeam.name} className="w-10 h-10" />
-              <span className="font-bold text-right">{awayTeam.name}</span>
+            <span className="text-gray-500 font-bold text-sm flex-shrink-0">VS</span>
+            <div className="flex flex-col items-center gap-1 flex-1 min-w-0">
+              <img src={awayTeam.logo} alt={awayTeam.name} className="w-10 h-10 object-contain" />
+              <span className="font-bold text-xs text-center truncate w-full">{awayTeam.name}</span>
             </div>
           </div>
 

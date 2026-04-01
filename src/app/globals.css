@@ -10,20 +10,39 @@
   --accent: #3b82f6;
 }
 
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   background-color: var(--bg);
   color: #f9fafb;
   font-family: 'Inter', system-ui, sans-serif;
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
 .card {
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: 12px;
-  padding: 1.25rem;
+  padding: 1rem;
+}
+
+@media (min-width: 640px) {
+  .card { padding: 1.25rem; }
 }
 
 .badge-high   { background: #14532d; color: #86efac; }
 .badge-medium { background: #713f12; color: #fde68a; }
 .badge-low    { background: #1f2937; color: #9ca3af; }
+
+/* Touch-friendly buttons */
+button, a {
+  touch-action: manipulation;
+}

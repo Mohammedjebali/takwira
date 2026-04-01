@@ -80,23 +80,21 @@ export default function FixtureCard({ match }: { match: FDMatch }) {
       </div>
 
       {/* Teams + Score */}
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3 flex-1">
+      <div className="flex items-center gap-2">
+        <div className="flex flex-col items-center gap-1 flex-1 min-w-0">
           {homeTeam.crest && <img src={homeTeam.crest} alt={homeTeam.name} className="w-8 h-8 object-contain" />}
-          <span className="font-semibold text-sm">{homeTeam.name}</span>
+          <span className="font-semibold text-xs text-center leading-tight w-full truncate px-1">{homeTeam.name}</span>
         </div>
-
-        <div className="text-center min-w-[60px]">
+        <div className="text-center flex-shrink-0 min-w-[56px]">
           {(score.fullTime.home !== null && score.fullTime.away !== null) ? (
-            <span className="text-xl font-bold">{score.fullTime.home} - {score.fullTime.away}</span>
+            <span className="text-lg font-bold tabular-nums">{score.fullTime.home} – {score.fullTime.away}</span>
           ) : (
-            <span className="text-gray-500 text-sm">vs</span>
+            <span className="text-gray-500 text-sm font-medium">vs</span>
           )}
         </div>
-
-        <div className="flex items-center gap-3 flex-1 justify-end">
-          <span className="font-semibold text-sm text-right">{awayTeam.name}</span>
+        <div className="flex flex-col items-center gap-1 flex-1 min-w-0">
           {awayTeam.crest && <img src={awayTeam.crest} alt={awayTeam.name} className="w-8 h-8 object-contain" />}
+          <span className="font-semibold text-xs text-center leading-tight w-full truncate px-1">{awayTeam.name}</span>
         </div>
       </div>
 

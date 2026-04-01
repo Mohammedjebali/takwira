@@ -33,7 +33,7 @@ export default function LeagueFilter({
 
   return (
     <div className="mb-6" ref={ref}>
-      <div className="flex gap-2 flex-wrap items-center">
+      <div className="flex gap-2 items-center overflow-x-auto pb-1 scrollbar-hide" style={{scrollbarWidth:'none'}}>
         <a
           href={`?date=${date}`}
           className={`px-3 py-1.5 rounded-full text-xs transition-colors font-medium ${!leagueFilter ? "bg-blue-600 text-white" : "bg-gray-800 hover:bg-gray-700"}`}
